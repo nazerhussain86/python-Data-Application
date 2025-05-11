@@ -4,63 +4,26 @@ import pandas as pd
 import os
 from io import BytesIO
 
-# Page setup
 st.set_page_config(page_title="PDF to Excel Table Extractor", layout="centered")
-
-# Custom CSS
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f8f9fa;
-        font-family: 'Segoe UI', sans-serif;
-    }
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    .upload-section {
-        border: 2px dashed #dee2e6;
-        border-radius: 12px;
-        padding: 30px;
-        background-color: #ffffff;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    .stButton>button {
-        border-radius: 10px;
-        background-color: #ff4b4b;
-        color: white;
-        height: 3em;
-        font-weight: 600;
-        transition: 0.3s ease-in-out;
-    }
-    .stButton>button:hover {
-        background-color: #d73838;
-        transform: scale(1.03);
-    }
-    .stDownloadButton>button {
-        border-radius: 10px;
-        height: 3em;
-        font-weight: 600;
-        margin-top: 1rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
 # Header
 st.markdown("""
     <h1 style='text-align: center;'>📄 PDF to Excel Table Extractor</h1>
-    <p style='text-align: center; font-size: 18px;'>Upload a PDF file containing tables and convert them into Excel format.</p>
+    <p style='text-align: center; font-size: 18px;'>Upload a PDF file with tables, and download extracted Excel sheets.</p>
 """, unsafe_allow_html=True)
 
-# Upload and convert section
+# Main container for layout
 with st.container():
-    st.markdown("### Step 1: Upload PDF File")
-    st.markdown('<div class="upload-section">', unsafe_allow_html=True)
-    uploaded_pdf = st.file_uploader(" ", type=["pdf"], label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    col1, col2 = st.columns([4, 1])
 
-    st.markdown("### Step 2: Convert to Excel")
-    convert_clicked = st.button("📤 Convert to Excel", use_container_width=True)
+    with col1:
+        uploaded_pdf = st.file_uploader("**Step 1:** Upload your PDF", type=["pdf"], label_visibility="collapsed")
+        st.caption("Limit: 200MB per file • PDF format only")
+
+    with col2:
+        st.write("")  # for vertical alignment
+        convert_clicked = st.button("📤 Convert to Excel", use_container_width=True)
 
 # Conversion logic
 if uploaded_pdf and convert_clicked:

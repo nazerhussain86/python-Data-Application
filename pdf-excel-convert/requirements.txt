@@ -3,3 +3,6 @@ pdfplumber
 pandas
 openpyxl
 numpy
+pdf2docx
+python-docx
+lxml

@@ -1,55 +1,86 @@
 import streamlit as st
+import fitz  # PyMuPDF
 import difflib
 import tempfile
 import os
+import base64
 
-st.set_page_config(page_title="Document Comparison Tool", layout="wide")
+st.set_page_config(page_title="PDF Comparison Tool", layout="wide")
+st.title("📄 PDF Comparison Tool")
 
-st.title("📄 Document Comparison Tool")
+# --- Helper Functions ---
 
-# Upload files
-file1 = st.file_uploader("Upload File 1", type=["txt"])
-file2 = st.file_uploader("Upload File 2", type=["txt"])
+def extract_text_from_pdf(uploaded_file):
+    """Extract text from PDF using PyMuPDF"""
+    text = ""
+    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
+        for page in doc:
+            text += page.get_text()
+    return text
 
 def generate_diff_html(text1, text2):
-    """Generate HTML diff highlighting changes from text1 to text2"""
+    """Generate HTML diff with highlighting"""
     text1_lines = text1.splitlines()
     text2_lines = text2.splitlines()
-    
+
     differ = difflib.HtmlDiff(wrapcolumn=80)
-    html_diff = differ.make_file(text1_lines, text2_lines, 
-                                 fromdesc='Original File', 
-                                 todesc='Modified File',
-                                 context=True, numlines=3)
-    
-    return html_diff
-
-if file1 and file2:
-    text1 = file1.read().decode("utf-8")
-    text2 = file2.read().decode("utf-8")
-
-    st.subheader("🔍 Differences Highlighted (Red = Removed from File 1)")
-    
-    # Generate diff HTML
-    diff_html = generate_diff_html(text1, text2)
-
-    # Save to temp HTML file
-    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".html") as f:
-        html_path = f.name
-        f.write(diff_html)
-
-    # Display in iframe
-    st.components.v1.html(
-        f"""
-        <iframe src="file://{html_path}" width="100%" height="600px" style="border:none;"></iframe>
-        """,
-        height=620,
-        scrolling=True
+    return differ.make_file(
+        text1_lines, text2_lines,
+        fromdesc="Original PDF",
+        todesc="Modified PDF",
+        context=True,
+        numlines=3
     )
 
-    # Clean up on rerun
-    if os.path.exists(html_path):
-        os.remove(html_path)
-else:
-    st.info("Please upload both files to begin comparison.")
+def display_pdf(file):
+    """Embed PDF in HTML iframe using base64"""
+    base64_pdf = base64.b64encode(file.read()).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500px" style="border:none;"></iframe>'
+    return pdf_display
 
+# --- Upload PDFs ---
+col1, col2 = st.columns(2)
+
+with col1:
+    file1 = st.file_uploader("Upload PDF File 1 (Original)", type="pdf", key="file1")
+    if file1:
+        st.markdown("#### 📄 Original PDF Preview")
+        st.markdown(display_pdf(file1), unsafe_allow_html=True)
+
+with col2:
+    file2 = st.file_uploader("Upload PDF File 2 (Modified)", type="pdf", key="file2")
+    if file2:
+        st.markdown("#### 📝 Modified PDF Preview")
+        st.markdown(display_pdf(file2), unsafe_allow_html=True)
+
+# --- Compare Button ---
+if file1 and file2:
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+    compare = st.button("🔍 Compare PDFs")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if compare:
+        with st.spinner("Comparing documents..."):
+            # Rewind file pointers after preview display
+            file1.seek(0)
+            file2.seek(0)
+
+            text1 = extract_text_from_pdf(file1)
+            text2 = extract_text_from_pdf(file2)
+            diff_html = generate_diff_html(text1, text2)
+
+            # Save comparison HTML
+            with tempfile.NamedTemporaryFile("w", delete=False, suffix=".html") as f:
+                html_path = f.name
+                f.write(diff_html)
+
+        st.markdown("### 🔄 Differences Highlighted (Red = Removed | Green = Added)")
+        st.components.v1.html(
+            f"""<iframe src="file://{html_path}" width="100%" height="600px" style="border:none;"></iframe>""",
+            height=620,
+            scrolling=True
+        )
+
+else:
+    st.info("Upload both PDF files to enable comparison.")

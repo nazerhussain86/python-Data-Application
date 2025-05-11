@@ -46,10 +46,19 @@ def generate_diff_html(text1, text2):
     )
 
 def display_pdf(file):
-    """Embed PDF in iframe using base64"""
+    """Embed PDF in iframe using base64 encoding (safe for Chrome)"""
     file.seek(0)
-    base64_pdf = base64.b64encode(file.read()).decode("utf-8")
-    return f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500px" style="border:none;"></iframe>'
+    file_data = file.read()
+    base64_pdf = base64.b64encode(file_data).decode("utf-8")
+    return f'''
+        <iframe
+            src="data:application/pdf;base64,{base64_pdf}"
+            width="100%"
+            height="600px"
+            style="border: 1px solid #ccc; border-radius: 10px;"
+        ></iframe>
+    '''
+
 
 def download_button_html(file_path, label):
     """Generate download link for HTML file"""
@@ -72,6 +81,7 @@ with col2:
     if file2:
         st.markdown("#### 📝 Modified PDF Preview")
         st.markdown(display_pdf(file2), unsafe_allow_html=True)
+
 
 # --- Compare Button ---
 if file1 and file2:

@@ -1,5 +1,5 @@
 import streamlit as st
-import fitz  # For normal PDFs
+import fitz  # PyMuPDF
 import difflib
 import tempfile
 import os
@@ -46,17 +46,17 @@ def generate_diff_html(text1, text2):
     )
 
 def display_pdf(file):
-    """Embed PDF in iframe"""
+    """Embed PDF in iframe using base64"""
+    file.seek(0)
     base64_pdf = base64.b64encode(file.read()).decode("utf-8")
     return f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500px" style="border:none;"></iframe>'
 
 def download_button_html(file_path, label):
     """Generate download link for HTML file"""
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     b64 = base64.b64encode(html_content.encode()).decode()
-    href = f'<a href="data:text/html;base64,{b64}" download="comparison_result.html">{label}</a>'
-    return href
+    return f'<a href="data:text/html;base64,{b64}" download="comparison_result.html">{label}</a>'
 
 # --- Upload PDFs ---
 col1, col2 = st.columns(2)
@@ -96,11 +96,9 @@ if file1 and file2:
                 f.write(diff_html)
 
         st.markdown("### 🔄 Differences Highlighted")
-        st.components.v1.html(
-            f"""<iframe src="file://{html_path}" width="100%" height="600px" style="border:none;"></iframe>""",
-            height=620,
-            scrolling=True
-        )
+        with open(html_path, "r", encoding="utf-8") as f:
+            diff_html_content = f.read()
+        st.components.v1.html(diff_html_content, height=600, scrolling=True)
 
         st.markdown("### ⬇️ Download Result")
         st.markdown(download_button_html(html_path, "📥 Download HTML Comparison"), unsafe_allow_html=True)

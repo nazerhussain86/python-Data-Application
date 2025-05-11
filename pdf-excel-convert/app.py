@@ -2,16 +2,18 @@ import streamlit as st
 from pdf2docx import Converter
 import os
 from io import BytesIO
+import pandas as pd
+from docx import Document
 
-st.set_page_config(page_title="PDF to Word to Excel", layout="centered")
+st.set_page_config(page_title="PDF to Excel", layout="centered")
 
 # Header
 st.markdown("""
-    <h1 style='text-align: center;'>📄 PDF ➜ Word ➜ Excel (Preserve Layout)</h1>
-    <p style='text-align: center; font-size: 18px;'>Upload a PDF with tables or layout. We'll convert it to Word (.docx) with layout preserved. You can open this Word file in Excel.</p>
+    <h1 style='text-align: center;'>📄 PDF ➜ Excel (Preserve Layout)</h1>
+    <p style='text-align: center; font-size: 18px;'>Upload a PDF with tables or layout. We'll convert it directly to Excel (.xlsx) with layout preserved.</p>
 """, unsafe_allow_html=True)
 
-# Upload and convert layout
+# Upload PDF
 with st.container():
     st.markdown("---")
     col1, col2 = st.columns([4, 1])
@@ -22,41 +24,52 @@ with st.container():
 
     with col2:
         st.write("")  # spacing
-        convert_clicked = st.button("📤 Convert", use_container_width=True)
+        convert_clicked = st.button("📤 Convert to Excel", use_container_width=True)
 
 # Conversion logic
 if uploaded_pdf and convert_clicked:
-    with st.spinner("🔄 Converting PDF to Word..."):
+    with st.spinner("🔄 Converting PDF to Excel..."):
         try:
             # Save uploaded PDF
             pdf_path = f"/tmp/{uploaded_pdf.name}"
             with open(pdf_path, "wb") as f:
                 f.write(uploaded_pdf.read())
 
-            # Set output path
+            # Convert PDF to Word first using pdf2docx
             word_filename = f"{os.path.splitext(uploaded_pdf.name)[0]}_layout.docx"
             word_path = f"/tmp/{word_filename}"
 
-            # Convert PDF to Word
             converter = Converter(pdf_path)
             converter.convert(word_path, start=0, end=None)
             converter.close()
 
-            # Load Word file as BytesIO
-            output = BytesIO()
-            with open(word_path, "rb") as f:
-                output.write(f.read())
-            output.seek(0)
+            # Load Word file to extract tables
+            doc = Document(word_path)
+            tables_data = []
+            for table in doc.tables:
+                for row in table.rows:
+                    row_data = [cell.text.strip() for cell in row.cells]
+                    tables_data.append(row_data)
 
-            st.success("✅ PDF converted to Word with layout preserved!")
-            st.download_button(
-                label="📥 Download Word File (Open in Excel)",
-                data=output,
-                file_name=word_filename,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+            # If tables are found, create an Excel file
+            if tables_data:
+                df = pd.DataFrame(tables_data)
+                excel_filename = f"{os.path.splitext(uploaded_pdf.name)[0]}_layout.xlsx"
+                excel_buffer = BytesIO()
+                df.to_excel(excel_buffer, index=False, header=False)
+                excel_buffer.seek(0)
 
-            st.info("💡 Open the downloaded .docx file in Excel to maintain layout and extract tables.")
+                # Provide the download button for Excel file
+                st.success("✅ PDF converted to Excel successfully!")
+                st.download_button(
+                    label="📥 Download Excel File",
+                    data=excel_buffer,
+                    file_name=excel_filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            else:
+                st.warning("⚠️ No tables found in the PDF.")
 
         except Exception as e:
             st.error(f"❌ Error during conversion: {e}")

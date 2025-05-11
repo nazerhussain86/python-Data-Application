@@ -23,7 +23,7 @@ with st.container():
 
     with col2:
         st.write("")  # for vertical alignment
-        convert_clicked = st.button("📤 Convert to Excel", use_container_width=True)
+        convert_clicked = st.button("📤 Pdf to Excel", use_container_width=True)
 
 # Conversion logic
 if uploaded_pdf and convert_clicked:

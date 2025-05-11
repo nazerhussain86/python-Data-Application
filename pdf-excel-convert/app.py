@@ -1,59 +1,65 @@
 import streamlit as st
-import pdfplumber
-import pandas as pd
+from pdf2docx import Converter
 import os
 from io import BytesIO
 
-st.set_page_config(page_title="PDF to Excel Table Extractor", layout="centered")
+st.set_page_config(page_title="PDF to Word to Excel", layout="centered")
 
 # Header
 st.markdown("""
-    <h1 style='text-align: center;'>📄 PDF to Excel Table Extractor</h1>
-    <p style='text-align: center; font-size: 18px;'>Upload a PDF file with tables, and download extracted Excel sheets.</p>
+    <h1 style='text-align: center;'>📄 PDF ➜ Word ➜ Excel (Preserve Layout)</h1>
+    <p style='text-align: center; font-size: 18px;'>Upload a PDF with tables or layout. We'll convert it to Word (.docx) with layout preserved. You can open this Word file in Excel.</p>
 """, unsafe_allow_html=True)
 
-# Main container for layout
+# Upload and convert layout
 with st.container():
     st.markdown("---")
     col1, col2 = st.columns([4, 1])
 
     with col1:
         uploaded_pdf = st.file_uploader("**Step 1:** Upload your PDF", type=["pdf"], label_visibility="collapsed")
-        st.caption("Limit: 200MB per file • PDF format only")
+        st.caption("Max size: 200MB • Format: PDF")
 
     with col2:
-        st.write("")  # for vertical alignment
-        convert_clicked = st.button("📤 Pdf to Excel", use_container_width=True)
+        st.write("")  # spacing
+        convert_clicked = st.button("📤 Convert", use_container_width=True)
 
 # Conversion logic
 if uploaded_pdf and convert_clicked:
-    with st.spinner("🔄 Extracting tables from PDF..."):
+    with st.spinner("🔄 Converting PDF to Word..."):
         try:
-            original_name = os.path.splitext(uploaded_pdf.name)[0]
-            output_excel_name = f"{original_name}_excel.xlsx"
+            # Save uploaded PDF
+            pdf_path = f"/tmp/{uploaded_pdf.name}"
+            with open(pdf_path, "wb") as f:
+                f.write(uploaded_pdf.read())
 
-            with pdfplumber.open(uploaded_pdf) as pdf:
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    for page_num, page in enumerate(pdf.pages):
-                        tables = page.extract_tables()
-                        if not tables:
-                            continue
-                        for table_num, table in enumerate(tables):
-                            df = pd.DataFrame(table[1:], columns=table[0])
-                            sheet_name = f"Page{page_num+1}_Table{table_num+1}"
-                            df.to_excel(writer, sheet_name=sheet_name, index=False)
-                output.seek(0)
+            # Set output path
+            word_filename = f"{os.path.splitext(uploaded_pdf.name)[0]}_layout.docx"
+            word_path = f"/tmp/{word_filename}"
 
-            st.success("✅ Tables extracted and saved to Excel!")
+            # Convert PDF to Word
+            converter = Converter(pdf_path)
+            converter.convert(word_path, start=0, end=None)
+            converter.close()
+
+            # Load Word file as BytesIO
+            output = BytesIO()
+            with open(word_path, "rb") as f:
+                output.write(f.read())
+            output.seek(0)
+
+            st.success("✅ PDF converted to Word with layout preserved!")
             st.download_button(
-                label="📥 Download Excel File",
+                label="📥 Download Word File (Open in Excel)",
                 data=output,
-                file_name=output_excel_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                file_name=word_filename,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
+            st.info("💡 Open the downloaded .docx file in Excel to maintain layout and extract tables.")
+
         except Exception as e:
-            st.error(f"❌ Error extracting tables: {e}")
+            st.error(f"❌ Error during conversion: {e}")
+
 elif not uploaded_pdf and convert_clicked:
     st.warning("⚠️ Please upload a PDF file before converting.")

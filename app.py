@@ -72,15 +72,15 @@ col1, col2 = st.columns(2)
 
 with col1:
     file1 = st.file_uploader("Upload PDF File 1 (Original)", type="pdf", key="file1")
-    if file1:
+    #if file1:
         #st.markdown("#### 📄 Original PDF Preview")
-        st.markdown(display_pdf(file1), unsafe_allow_html=True)
+        #st.markdown(display_pdf(file1), unsafe_allow_html=True)
 
 with col2:
     file2 = st.file_uploader("Upload PDF File 2 (Modified)", type="pdf", key="file2")
-    if file2:
+    #if file2:
         #st.markdown("#### 📝 Modified PDF Preview")
-        st.markdown(display_pdf(file2), unsafe_allow_html=True)
+        #st.markdown(display_pdf(file2), unsafe_allow_html=True)
 
 
 # --- Compare Button ---

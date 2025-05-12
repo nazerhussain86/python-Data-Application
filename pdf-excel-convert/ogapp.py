@@ -41,7 +41,7 @@ if uploaded_pdf and convert_clicked:
                             continue
                         for table_num, table in enumerate(tables):
                             df = pd.DataFrame(table[1:], columns=table[0])
-                            sheet_name = f"Page{page_num+1}_Table{table_num+1}"
+                            sheet_name = f"Page{page_num}"
                             df.to_excel(writer, sheet_name=sheet_name, index=False)
                 output.seek(0)
 

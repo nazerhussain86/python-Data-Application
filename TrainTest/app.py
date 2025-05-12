@@ -64,37 +64,38 @@ def compare_with_trained_model(trained_db, new_db, threshold=0.8):
 def main():
     st.title("PDF File Comparison System")
 
-    # Upload PDF files for training
-    st.header("Upload PDFs for Training")
-    uploaded_files_train = st.file_uploader("Choose PDF files for training", type="pdf", accept_multiple_files=True)
+    # Create tabs
+    tab1, tab2 = st.tabs(["Train Model", "Check File"])
 
-    if uploaded_files_train and len(uploaded_files_train) == 2:
-        # Process the uploaded files and create a FAISS index
-        db_list = []
-        for uploaded_file in uploaded_files_train:
-            db = process_pdf(uploaded_file)
-            db_list.append(db)
+    with tab1:
+        st.header("Upload PDFs for Training")
+        uploaded_files_train = st.file_uploader("Choose PDF files for training", type="pdf", accept_multiple_files=True, key="train_uploader")
 
-        # Merge the FAISS indexes
-        merged_db = db_list[0]
-        for db in db_list[1:]:
-            merged_db.merge_from(db)
+        if uploaded_files_train and len(uploaded_files_train) == 2:
+            # Process the uploaded files and create a FAISS index
+            db_list = []
+            for uploaded_file in uploaded_files_train:
+                db = process_pdf(uploaded_file)
+                db_list.append(db)
 
-        # Initialize the QA system
-        qa = initialize_qa_system(merged_db)
+            # Merge the FAISS indexes
+            merged_db = db_list[0]
+            for db in db_list[1:]:
+                merged_db.merge_from(db)
 
-        st.write("Model trained and ready for comparison.")
+            st.session_state['trained_db'] = merged_db
+            st.write("Model trained and ready for comparison.")
 
-        # Upload PDF file for checking
+    with tab2:
         st.header("Upload PDF for Checking")
-        uploaded_file_check = st.file_uploader("Choose a PDF file to check", type="pdf")
+        uploaded_file_check = st.file_uploader("Choose a PDF file to check", type="pdf", key="check_uploader")
 
-        if uploaded_file_check is not None:
+        if uploaded_file_check is not None and 'trained_db' in st.session_state:
             # Process the uploaded file for checking
             check_db = process_pdf(uploaded_file_check)
 
             # Compare the new file with the trained model
-            is_new_file = compare_with_trained_model(merged_db, check_db)
+            is_new_file = compare_with_trained_model(st.session_state['trained_db'], check_db)
 
             if is_new_file:
                 st.write("This PDF is a new file.")

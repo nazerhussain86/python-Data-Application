@@ -30,7 +30,7 @@ if uploaded_pdf and convert_clicked:
     with st.spinner("🔄 Extracting tables from PDF..."):
         try:
             original_name = os.path.splitext(uploaded_pdf.name)[0]
-            output_excel_name = f"{original_name}_excel.xlsx"
+            output_excel_name = f"{original_name}.xlsx"
 
             with pdfplumber.open(uploaded_pdf) as pdf:
                 output = BytesIO()

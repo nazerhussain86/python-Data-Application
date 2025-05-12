@@ -1,0 +1,105 @@
+from langchain_community.llms import CTransformers
+from langchain.agents import Tool
+from langchain.agents import AgentType, initialize_agent
+from langchain.chains import RetrievalQA
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+import tempfile
+import os
+import streamlit as st
+import timeit
+from langchain.callbacks.tracers import ConsoleCallbackHandler
+
+# Load the model
+def load_llm():
+    llm = CTransformers(
+        model="TheBloke/Llama-2-7B-Chat-GGML",
+        model_type="llama",
+        max_new_tokens=512,
+        temperature=0.7
+    )
+    return llm
+
+# Load and process PDF files
+def process_pdf(pdf_file):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(pdf_file.read())
+        tmp_file_path = tmp_file.name
+
+    loader = PyPDFLoader(tmp_file_path)
+    documents = loader.load()
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    texts = text_splitter.split_documents(documents)
+
+    # Create embeddings and store in FAISS
+    embeddings = HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    db = FAISS.from_documents(texts, embeddings)
+
+    return db
+
+# Initialize the QA system
+def initialize_qa_system(db):
+    llm = load_llm()
+    qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=db.as_retriever()
+    )
+    return qa
+
+# Function to compare new file with trained model
+def compare_with_trained_model(trained_db, new_db, threshold=0.8):
+    # Retrieve the most similar documents from the trained index
+    similar_docs = trained_db.similarity_search_with_score(new_db.docstore._dict.values(), k=1)
+
+    # Check if the most similar document is above the threshold
+    if similar_docs and similar_docs[0][1] > threshold:
+        return False  # Not a new file
+    else:
+        return True  # New file
+
+# Streamlit app
+def main():
+    st.title("PDF File Comparison System")
+
+    # Upload PDF files for training
+    st.header("Upload PDFs for Training")
+    uploaded_files_train = st.file_uploader("Choose PDF files for training", type="pdf", accept_multiple_files=True)
+
+    if uploaded_files_train and len(uploaded_files_train) == 2:
+        # Process the uploaded files and create a FAISS index
+        db_list = []
+        for uploaded_file in uploaded_files_train:
+            db = process_pdf(uploaded_file)
+            db_list.append(db)
+
+        # Merge the FAISS indexes
+        merged_db = db_list[0]
+        for db in db_list[1:]:
+            merged_db.merge_from(db)
+
+        # Initialize the QA system
+        qa = initialize_qa_system(merged_db)
+
+        st.write("Model trained and ready for comparison.")
+
+        # Upload PDF file for checking
+        st.header("Upload PDF for Checking")
+        uploaded_file_check = st.file_uploader("Choose a PDF file to check", type="pdf")
+
+        if uploaded_file_check is not None:
+            # Process the uploaded file for checking
+            check_db = process_pdf(uploaded_file_check)
+
+            # Compare the new file with the trained model
+            is_new_file = compare_with_trained_model(merged_db, check_db)
+
+            if is_new_file:
+                st.write("This PDF is a new file.")
+            else:
+                st.write("This PDF is the same as the previously trained files.")
+
+if __name__ == "__main__":
+    main()

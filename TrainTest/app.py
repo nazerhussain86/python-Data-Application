@@ -71,7 +71,7 @@ def main():
         uploaded_files_train = st.file_uploader("Choose PDF files for training", type="pdf", accept_multiple_files=True, key="train_uploader")
 
         if st.button("Train", key="train_button"):
-            if uploaded_files_train and len(uploaded_files_train) == 2:
+            if uploaded_files_train:
                 # Process the uploaded files and create a FAISS index
                 db_list = []
                 for uploaded_file in uploaded_files_train:
@@ -79,14 +79,17 @@ def main():
                     db_list.append(db)
 
                 # Merge the FAISS indexes
-                merged_db = db_list[0]
-                for db in db_list[1:]:
-                    merged_db.merge_from(db)
+                if db_list:
+                    merged_db = db_list[0]
+                    for db in db_list[1:]:
+                        merged_db.merge_from(db)
 
-                st.session_state['trained_db'] = merged_db
-                st.write("Model trained and ready for comparison.")
+                    st.session_state['trained_db'] = merged_db
+                    st.write("Model trained and ready for comparison.")
+                else:
+                    st.write("No files uploaded for training.")
             else:
-                st.write("Please upload exactly 2 PDF files for training.")
+                st.write("No files uploaded for training.")
 
     with tab2:
         st.header("Upload PDF for Checking")

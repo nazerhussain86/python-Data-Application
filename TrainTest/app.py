@@ -9,7 +9,6 @@ from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 import tempfile
 import os
 import streamlit as st
-import timeit
 from langchain.callbacks.tracers import ConsoleCallbackHandler
 
 # Load the model
@@ -71,36 +70,42 @@ def main():
         st.header("Upload PDFs for Training")
         uploaded_files_train = st.file_uploader("Choose PDF files for training", type="pdf", accept_multiple_files=True, key="train_uploader")
 
-        if uploaded_files_train and len(uploaded_files_train) == 2:
-            # Process the uploaded files and create a FAISS index
-            db_list = []
-            for uploaded_file in uploaded_files_train:
-                db = process_pdf(uploaded_file)
-                db_list.append(db)
+        if st.button("Train", key="train_button"):
+            if uploaded_files_train and len(uploaded_files_train) == 2:
+                # Process the uploaded files and create a FAISS index
+                db_list = []
+                for uploaded_file in uploaded_files_train:
+                    db = process_pdf(uploaded_file)
+                    db_list.append(db)
 
-            # Merge the FAISS indexes
-            merged_db = db_list[0]
-            for db in db_list[1:]:
-                merged_db.merge_from(db)
+                # Merge the FAISS indexes
+                merged_db = db_list[0]
+                for db in db_list[1:]:
+                    merged_db.merge_from(db)
 
-            st.session_state['trained_db'] = merged_db
-            st.write("Model trained and ready for comparison.")
+                st.session_state['trained_db'] = merged_db
+                st.write("Model trained and ready for comparison.")
+            else:
+                st.write("Please upload exactly 2 PDF files for training.")
 
     with tab2:
         st.header("Upload PDF for Checking")
         uploaded_file_check = st.file_uploader("Choose a PDF file to check", type="pdf", key="check_uploader")
 
-        if uploaded_file_check is not None and 'trained_db' in st.session_state:
-            # Process the uploaded file for checking
-            check_db = process_pdf(uploaded_file_check)
+        if st.button("Check", key="check_button"):
+            if uploaded_file_check is not None and 'trained_db' in st.session_state:
+                # Process the uploaded file for checking
+                check_db = process_pdf(uploaded_file_check)
 
-            # Compare the new file with the trained model
-            is_new_file = compare_with_trained_model(st.session_state['trained_db'], check_db)
+                # Compare the new file with the trained model
+                is_new_file = compare_with_trained_model(st.session_state['trained_db'], check_db)
 
-            if is_new_file:
-                st.write("This PDF is a new file.")
+                if is_new_file:
+                    st.write("This PDF is a new file.")
+                else:
+                    st.write("This PDF is the same as the previously trained files.")
             else:
-                st.write("This PDF is the same as the previously trained files.")
+                st.write("Please upload a PDF file to check and ensure the model is trained.")
 
 if __name__ == "__main__":
     main()
